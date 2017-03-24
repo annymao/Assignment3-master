@@ -1,5 +1,7 @@
 package com.sslab.pokemon;
 
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonWriter;
 import com.sslab.pokemon.data.PokemonIndividualData;
 import com.sslab.pokemon.data.PokemonSpeciesData;
 import com.sslab.pokemon.data.PokemonValueData;
@@ -7,7 +9,10 @@ import com.sslab.pokemon.sprite.PokemonSprite;
 
 import javax.swing.*;
 import java.awt.event.*;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -93,69 +98,78 @@ public class PokeGen {
 
             }
         });
-        slot0.addMouseListener(new MouseAdapter() {
+        MouseListener click = new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                click(slot0);
+                if(pokemonMap.containsKey(currentSelectedPanel))
+                {
+                    JLabel currentLabel = (JLabel) currentSelectedPanel.getComponent(0);
+                    int id=speciesComboBox.getSelectedIndex();
+                    setPokemonIcon(id-1, currentLabel);
+
+                }
+                else
+                {
+                    speciesComboBox.setSelectedIndex(0);
+                }
+                currentSelectedPanel.setBorder(BorderFactory.createEtchedBorder());
+                currentSelectedPanel=(JPanel)e.getComponent();
+                currentSelectedPanel.setBorder(BorderFactory.createBevelBorder(1));
+                loadPokemon(currentSelectedPanel);
             }
-        });
-        slot1.addMouseListener(new MouseAdapter() {
+
             @Override
-            public void mouseClicked(MouseEvent e) {
-                click(slot1);
+            public void mousePressed(MouseEvent e) {
+
             }
-        });
-        slot2.addMouseListener(new MouseAdapter() {
+
             @Override
-            public void mouseClicked(MouseEvent e) {
-                click(slot2);
+            public void mouseReleased(MouseEvent e) {
+
             }
-        });
-        slot3.addMouseListener(new MouseAdapter() {
+
             @Override
-            public void mouseClicked(MouseEvent e) {
-                click(slot3);
+            public void mouseEntered(MouseEvent e) {
+
             }
-        });
-        slot4.addMouseListener(new MouseAdapter() {
+
             @Override
-            public void mouseClicked(MouseEvent e) {
-                click(slot4);
+            public void mouseExited(MouseEvent e) {
+
             }
-        });
-        slot5.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                click(slot5);
-            }
-        });
+        };
+        slot0.addMouseListener(click);
+        slot1.addMouseListener(click);
+        slot2.addMouseListener(click);
+        slot3.addMouseListener(click);
+        slot4.addMouseListener(click);
+        slot5.addMouseListener(click);
         saveButton.addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(ActionEvent event) {
                 setPokemon(currentSelectedPanel);
+
+                try {
+                    saveFile("morris_new_pokemon.json");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
         deleteButton.addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(ActionEvent event) {
                 pokemonMap.remove(currentSelectedPanel);
                 speciesComboBox.setSelectedIndex(0);
+                try {
+                    saveFile("morris_new_pokemon.json");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
-    private void click(JPanel c)
-    {
-        if(pokemonMap.containsKey(currentSelectedPanel))
-        {
-            JLabel currentLabel = (JLabel) currentSelectedPanel.getComponent(0);
-            setPokemonIcon(pokemonMap.get(currentSelectedPanel).getId() - 1, currentLabel);
-        }
-        currentSelectedPanel.setBorder(BorderFactory.createEtchedBorder());
-        currentSelectedPanel=c;
-        currentSelectedPanel.setBorder(BorderFactory.createBevelBorder(1));
-        loadPokemon(currentSelectedPanel);
 
-    }
     private void setPokemonIcon(int id,JLabel label)
     {
         ImageIcon icon = new ImageIcon(PokemonSprite.getSprite(id));
@@ -172,7 +186,8 @@ public class PokeGen {
             }
             PokemonValueData valueArray = new PokemonValueData(arr);
             String nick=nickNameField.getText();
-            PokemonIndividualData pokemon=new PokemonIndividualData(id,nick,valueArray);
+            String name=pokedex.getPokemonData(id-1).getSpeciesName();
+            PokemonIndividualData pokemon=new PokemonIndividualData(pokedex.getPokemonData(id-1).getId(),name,nick,valueArray);
             pokemonMap.put(panel,pokemon);
         }
 
@@ -183,7 +198,10 @@ public class PokeGen {
         {
 
             PokemonIndividualData pokemon = pokemonMap.get(panel);
-            speciesComboBox.setSelectedIndex(pokemon.getId());
+            String str = Integer.toString(pokemon.getId());
+            str=str.concat(":");
+            str=str.concat(pokemon.getSpeciesName());
+            speciesComboBox.setSelectedItem(str);
             int[] arr = pokemon.getSpeciesValue().getValArray();
             for (int i = 0; i < 6; i++) {
                 statField.get(i).setText(Integer.toString(arr[i]));
@@ -196,7 +214,24 @@ public class PokeGen {
         }
 
     }
+    void saveFile(String fileName) throws IOException {
+        //TODO sort list before save to file
+        ArrayList<PokemonIndividualData> pokemonIndividualList=new ArrayList<>();
+        for(PokemonIndividualData poke:pokemonMap.values())
+        {
+            pokemonIndividualList.add(poke);
+        }
+        Collections.sort(pokemonIndividualList);
+        //Create JsonWriter with fileName
+        JsonWriter writer = new JsonWriter(new FileWriter(fileName));
+        //create a gson object
+        Gson gson = new Gson();
+        //use gson to write object into json file, remember to convert ArrayList back to normal array first
+        gson.toJson(pokemonIndividualList.toArray(),PokemonSpeciesData[].class,writer);
+        //close the writer, very important!!!
+        writer.close();
 
+    }
     public static void main(String[] args) {
         JFrame frame = new JFrame("PokeGen");
         frame.setContentPane(new PokeGen().root);
